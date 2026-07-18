@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CyberWatch — Real-time global cyberattack visualization. Six live threat intelligence feeds on a 3D globe." />
+  <title>CyberWatch — Real-Time Cyberattack Map</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<!-- ── Loading overlay ─────────────────────────────────────────────────────── -->
+<div id="loading-overlay">
+  <div class="loading-wordmark">Cyber<span>Watch</span></div>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  <div class="loading-label">Connecting to threat feeds…</div>
+</div>
+
+<!-- ── App ─────────────────────────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Latest Ticker -->
+  <div id="latest-ticker">
+    <div class="ticker-badge"><span style="margin-right:6px">⚠️</span>LATEST</div>
+    <div class="ticker-wrap">
+      <div class="ticker-content" id="ticker-content">
+        <!-- items get injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="stats-bar">
+    <div class="stat-pill">
+      <span class="icon">🌐</span>
+      <span id="stat-attacks" class="val">—</span>
+      <span>Active Threats (> 48h)</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-pill">
+      <span class="icon">🎯</span>
+      <span>Most targeted:</span>
+      <span id="stat-target" class="val">—</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-pill">
+      <span class="icon">⚡</span>
+      <span>Top type:</span>
+      <span id="stat-type" class="val">—</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="replay-badge">LAST 12H — LIVE REPLAY</div>
+    <div class="stat-sep"></div>
+    <div class="stat-pill">
+      <span>Last Sync Data: </span>
+      <span id="stat-updated" class="val">—</span>
+    </div>
+    <span id="ws-status" class="status-reconnecting">● CONNECTING</span>
+  </div>
+
+  <!-- Center Popup -->
+  <div id="center-popup" class="hidden">
+    <div class="popup-header">
+      <span>Basic Info</span>
+      <button id="popup-close">×</button>
+    </div>
+    <div class="popup-body">
+      <div id="popup-icon"></div>
+      <div class="popup-details">
+        <div id="popup-type">—</div>
+        <div id="popup-src">—</div>
+      </div>
+    </div>
+    <div class="popup-footer">
+      <button id="popup-action">View Full Analysis ›</button>
+    </div>
+  </div>
+
+  <!-- Main row -->
+  <div id="main-row">
+
+    <!-- Live feed -->
+    <div id="live-feed">
+      <div id="feed-head">
+        <span class="feed-pulse-icon"></span>
+        Pulse Feed
+      </div>
+      <div id="feed-list">
+        <div class="feed-empty">
+          <div class="feed-empty-icon">📡</div>
+          <div>Connecting to feeds…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile hamburger (hidden on desktop) -->
+    <button id="hamburger" aria-label="Toggle feed panel">
+      <span></span><span></span><span></span>
+    </button>
+
+    <!-- Globe -->
+    <div id="globe-wrap"></div>
+
+    <!-- Globe Bottom Status Bar (floating overlay — outside globe-wrap so Globe.gl doesn't destroy it) -->
+    <div id="globe-status">
+      <div class="gs-item">
+        <span class="gs-icon">⚡</span>
+        <span id="gs-incidents" class="gs-val">—</span>
+        <span class="gs-label">incidents</span>
+        <span id="gs-delta" class="gs-delta"></span>
+      </div>
+      <div class="gs-sep"></div>
+      <div class="gs-item">
+        <span class="gs-icon">🎯</span>
+        <span id="gs-cves" class="gs-val">—</span>
+        <span class="gs-label">active CVEs</span>
+      </div>
+      <div class="gs-sep"></div>
+      <div class="gs-item">
+        <span class="gs-icon">🌐</span>
+        <span id="gs-countries" class="gs-val">—</span>
+        <span class="gs-label">countries targeted</span>
+      </div>
+      <div class="gs-sep"></div>
+      <div class="gs-item">
+        <span class="gs-icon">📡</span>
+        <span id="gs-rate" class="gs-val">—</span>
+        <span class="gs-label">events/hr</span>
+      </div>
+    </div>
+
+    <!-- Country Dashboard Overlay (appears on country polygon click) -->
+    <div id="country-overlay" class="hidden">
+      <div class="co-header">
+        <div class="co-title-row">
+          <span id="co-flag" class="co-flag"></span>
+          <span id="co-name" class="co-name">—</span>
+          <span id="co-cars-badge" class="co-cars-badge">—</span>
+        </div>
+        <button id="co-close" aria-label="Close">×</button>
+      </div>
+      <div class="co-body">
+        <!-- CARS Score Bar -->
+        <div class="co-score-row">
+          <span class="co-score-label">CARS Risk Score</span>
+          <span id="co-score-val" class="co-score-val">—</span>
+        </div>
+        <div class="co-score-track"><div id="co-score-fill" class="co-score-fill"></div></div>
+
+        <!-- Threat type breakdown -->
+        <div class="co-section-label">Top Threat Types</div>
+        <div id="co-threats" class="co-threats">—</div>
+
+        <!-- Recent events list -->
+        <div class="co-section-label">Recent Events</div>
+        <div id="co-events" class="co-events">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Side panel -->
+    <div id="side-panel">
+      <div id="panel-bar">
+        <span id="panel-bar-title">Event Details</span>
+        <button id="panel-close" title="Close (Esc)">×</button>
+      </div>
+      <div id="panel-scroll">
+
+        <!-- Layer 1 — General -->
+        <div class="psec">
+          <div class="psec-label">Threat Overview</div>
+          <div class="l1-header">
+            <span id="l1-icon">⚡</span>
+            <span id="l1-type">—</span>
+          </div>
+          <div class="badge-row">
+            <span id="l1-sev" class="sev-badge">—</span>
+            <span id="cars-badge">—</span>
+          </div>
+          <div id="l1-route">—</div>
+          <div id="l1-age">—</div>
+          <div id="l1-desc">—</div>
+
+          <div class="what-means-box" style="margin-top: 16px; padding: 12px; background: rgba(240,165,0,0.06); border-left: 2px solid var(--accent-yellow); border-radius: 0 4px 4px 0;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-label); margin-bottom: 6px; letter-spacing: 0.08em;">What this means for you</div>
+            <div id="l1-meaning" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">—</div>
+          </div>
+        </div>
+
+        <!-- AI Event Summary (loaded on demand) -->
+        <div id="ai-sec">
+          <div class="ai-label">Summary</div>
+          <div class="ai-subsec-label">WHAT IT IS</div>
+          <div id="ai-what-content" class="ai-text ai-loading">Select an event to generate analysis…</div>
+          <div class="ai-subsec-label" style="margin-top: 12px;">HOW DOES IT AFFECT YOU</div>
+          <div id="ai-affects-content" class="ai-text">—</div>
+          <a id="ai-source-link" href="#" target="_blank" class="nvd-link"
+             style="display:none; margin-top: 10px; font-size: 11px;">—</a>
+        </div>
+
+        <!-- Layer 2 — Severity -->
+        <div class="xsec" id="xsev">
+          <button class="xtoggle">
+            <span>Severity Details</span>
+            <span class="xtoggle-chevron">▼</span>
+          </button>
+          <div class="xcontent">
+            <div class="cvss-row">
+              <span class="cvss-lbl">CVSS Score</span>
+              <span id="cvss-num">—</span>
+            </div>
+            <div class="cvss-track"><div id="cvss-fill"></div></div>
+            <div id="cvss-text">—</div>
+          </div>
+        </div>
+
+        <!-- Layer 3 — Advanced -->
+        <div class="xsec" id="xadv">
+          <button class="xtoggle">
+            <span>Advanced — For security professionals</span>
+            <span class="xtoggle-chevron">▼</span>
+          </button>
+          <div class="xcontent">
+            <div class="df"><span class="dk">Source</span><span id="l3-src" class="dv">—</span></div>
+            <div class="df"><span class="dk">Target</span><span id="l3-tgt" class="dv">—</span></div>
+            <div class="df">
+              <span class="dk">CVE ID</span>
+              <span class="dv">
+                <span id="l3-cve">—</span>
+                <a id="l3-nvd" class="nvd-link" href="#" target="_blank" style="display:none;margin-left:4px;">↗ Patch / NVD Info</a>
+              </span>
+            </div>
+            <div class="df"><span class="dk">Feed</span><span id="l3-feed" class="dv">—</span></div>
+            <div id="l3-enrich-row" class="df" style="flex-direction: column; align-items: flex-start; gap: 4px; padding-top: 10px; display: none;">
+              <span class="dk" style="color: var(--accent-blue);">✦ Firecrawl Enrichment</span>
+              <div id="l3-enrich" class="dv" style="text-align: left; font-size: 10px; width: 100%; white-space: pre-wrap; color: var(--text-muted);"></div>
+            </div>
+            <button class="raw-btn" id="raw-btn">▶ Raw JSON</button>
+            <div id="raw-box"><pre id="raw-pre"></pre></div>
+          </div>
+        </div>
+
+      </div><!-- /panel-scroll -->
+    </div><!-- /side-panel -->
+
+  </div><!-- /main-row -->
+</div><!-- /app -->
+
+<!-- Scripts -->
+<script src="/static/config.js"></script>
+<script src="//unpkg.com/globe.gl"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

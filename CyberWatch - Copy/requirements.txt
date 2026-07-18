@@ -1,0 +1,7 @@
+fastapi==0.139.1
+uvicorn==0.51.0
+APScheduler==3.11.3
+httpx==0.28.1
+feedparser==6.0.12
+python-dotenv==1.2.2
+pydantic==2.13.4
